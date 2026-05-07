@@ -91,6 +91,7 @@ export default function TeacherPage() {
       document.getElementById('teacherRoot').innerHTML = '';
       const inp = document.getElementById('pinInput');
       inp.value = ''; inp.focus();
+      initLogin();
     }
 
     function tryPin(pin) {
@@ -111,7 +112,8 @@ export default function TeacherPage() {
 
     function initLogin() {
       const inp = document.getElementById('pinInput');
-      if (!inp) return;
+      if (!inp || inp.dataset.listenerAttached) return;
+      inp.dataset.listenerAttached = 'true';
       inp.addEventListener('input', () => {
         inp.value = inp.value.replace(/\D/g, '');
         document.getElementById('loginMsg').textContent = '';
