@@ -98,9 +98,9 @@ export default function StudentPage({ grade, cls, initialStudents }) {
     }
 
     function attachCardEvents(card, s) {
-      let startX = 0, startY = 0, moved = false;
+      let startX = 0, startY = 0, moved = false, touchHandled = false;
       card.addEventListener('touchstart', e => {
-        moved = false; state.longPressFired = false;
+        moved = false; touchHandled = false; state.longPressFired = false;
         const t = e.touches[0]; startX = t.clientX; startY = t.clientY;
         state.longPressTimer = setTimeout(() => { state.longPressFired = true; openMemoSheet(s); }, 600);
       }, { passive: true });
@@ -112,10 +112,13 @@ export default function StudentPage({ grade, cls, initialStudents }) {
       card.addEventListener('touchend', e => {
         clearTimeout(state.longPressTimer);
         e.preventDefault();
-        if (!state.longPressFired && !moved) toggleStatus(s, card);
+        if (!state.longPressFired && !moved) { touchHandled = true; toggleStatus(s, card); }
       });
-      card.addEventListener('touchcancel', () => { clearTimeout(state.longPressTimer); moved = false; });
-      card.addEventListener('click', () => toggleStatus(s, card));
+      card.addEventListener('touchcancel', () => { clearTimeout(state.longPressTimer); moved = false; touchHandled = false; });
+      card.addEventListener('click', () => {
+        if (touchHandled) { touchHandled = false; return; }
+        toggleStatus(s, card);
+      });
       card.addEventListener('contextmenu', e => { e.preventDefault(); openMemoSheet(s); });
     }
 
