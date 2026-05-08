@@ -1,5 +1,5 @@
 const { requireTeacher, canAccessGrade } = require('../../../lib/auth');
-const { readAttendance } = require('../../../lib/sheets');
+const { readAttendance, readSchedule } = require('../../../lib/sheets');
 const { classOf, gradeOf, todayKST, getMonthWeekdays } = require('../../../lib/utils');
 const studentsData = require('../../../students.json');
 
@@ -9,20 +9,6 @@ function getStudents(grade, cls) {
   if (!cls || cls === 0) return Object.values(studentsData[g]).flat().sort((a, b) => a.학번 - b.학번);
   const c = String(cls);
   return (studentsData[g][c] || []).slice();
-}
-
-function presentList(students, records, date, period) {
-  const presentSet = new Set();
-  const memoMap = {};
-  records.forEach(r => {
-    if (r.날짜 === date && Number(r.교시) === Number(period)) {
-      if (r.상태 === '출석') presentSet.add(r.학번);
-      if (r.메모) memoMap[r.학번] = r.메모;
-    }
-  });
-  return students
-    .filter(s => presentSet.has(s.학번))
-    .map(s => ({ 학번: s.학번, 이름: s.이름, 상태: '출석', 메모: memoMap[s.학번] || '' }));
 }
 
 export default requireTeacher(async function handler(req, res) {
@@ -38,9 +24,49 @@ export default requireTeacher(async function handler(req, res) {
   const students = getStudents(g, c);
   const records = await readAttendance(g, yearMonth);
   const clsRecords = c === 0 ? records : records.filter(r => classOf(r.학번) === c);
+  const schedule = await readSchedule(g);
 
-  const todayP1 = presentList(students, clsRecords, today, 1);
-  const todayP2 = presentList(students, clsRecords, today, 2);
+  const dayIndex = new Date(today).getDay();
+  const dayMap = ['일', '월', '화', '수', '목', '금', '토'];
+  const todayDayName = dayMap[dayIndex];
+
+  function buildDailyList(period) {
+    const expected = [];
+    const unexpected = [];
+    
+    const presentSet = new Set();
+    const memoMap = {};
+    clsRecords.forEach(r => {
+      if (r.날짜 === today && Number(r.교시) === Number(period)) {
+        if (r.상태 === '출석') presentSet.add(r.학번);
+        if (r.메모) memoMap[r.학번] = r.메모;
+      }
+    });
+
+    students.forEach(s => {
+      const isExpected = schedule[s.학번] ? schedule[s.학번][todayDayName] : false;
+      const isPresent = presentSet.has(s.학번);
+      
+      const item = {
+        학번: s.학번,
+        이름: s.이름,
+        상태: isPresent ? '출석' : '결석',
+        메모: memoMap[s.학번] || '',
+        isExpected
+      };
+
+      if (isExpected) {
+        expected.push(item);
+      } else if (isPresent) {
+        unexpected.push(item);
+      }
+    });
+    
+    return { expected, unexpected };
+  }
+
+  const todayP1 = buildDailyList(1);
+  const todayP2 = buildDailyList(2);
 
   const weekdays = getMonthWeekdays(yearMonth);
   const eligibleDays = weekdays.filter(d => d <= today);

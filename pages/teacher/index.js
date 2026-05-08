@@ -146,6 +146,7 @@ export default function TeacherPage() {
             <button class="tab-btn" data-tab="daily">일별 보기</button>
             <button class="tab-btn" data-tab="month">이번 달</button>
             <button class="tab-btn" data-tab="matrix">월별 보기</button>
+            <button class="tab-btn" data-tab="schedule">일정 관리</button>
           </div>
           <button class="tab-btn" id="logoutBtn" style="flex:0 0 auto;background:transparent;color:var(--color-muted)">로그아웃</button>
         </div>
@@ -174,6 +175,14 @@ export default function TeacherPage() {
 
         <section class="tab-panel active" id="tab-today"><div class="loading">불러오는 중…</div></section>
         <section class="tab-panel" id="tab-month"><div class="loading">불러오는 중…</div></section>
+        <section class="tab-panel" id="tab-schedule">
+          <div style="padding:16px">
+            <div id="scheduleContent"><div class="loading">불러오는 중…</div></div>
+            <div style="margin-top:16px">
+              <button class="btn btn-primary" id="saveScheduleBtn" style="display:none;width:100%">일정 저장</button>
+            </div>
+          </div>
+        </section>
         <section class="tab-panel" id="tab-matrix">
           <div style="padding:16px">
             <div class="controls">
@@ -308,6 +317,9 @@ export default function TeacherPage() {
             const d = document.getElementById('dailyDay');
             if (m?.value && d?.value) loadDailyDetail(m.value + '-' + d.value);
           }
+          if (b.dataset.tab === 'schedule') {
+            loadSchedule();
+          }
         });
       });
     }
@@ -317,6 +329,77 @@ export default function TeacherPage() {
      * ──────────────────────────────────────────────── */
     function gradeName(g) { return g + '학년'; }
     function clsName(c)   { return c === 0 ? '전체' : c + '반'; }
+
+    let currentScheduleData = [];
+
+    function loadSchedule() {
+      const cont = document.getElementById('scheduleContent'); if (!cont) return;
+      const btn = document.getElementById('saveScheduleBtn'); if (btn) btn.style.display = 'none';
+      cont.innerHTML = '<div class="loading">불러오는 중…</div>';
+      apiGet(`/api/teacher/schedule?grade=${ACTIVE_GRADE}&cls=${CLS}`)
+        .then(res => {
+          if (!res || !res.ok) { cont.innerHTML = '<div class="loading">로드 실패</div>'; return; }
+          currentScheduleData = res.data;
+          renderSchedule(res.data);
+          if (btn) {
+            btn.style.display = 'block';
+            btn.onclick = saveScheduleData;
+          }
+        })
+        .catch(() => { cont.innerHTML = '<div class="loading">로드 실패</div>'; });
+    }
+
+    function renderSchedule(data) {
+      const cont = document.getElementById('scheduleContent'); if (!cont) return;
+      let html = `<div class="summary-row">${gradeName(ACTIVE_GRADE)} ${clsName(CLS)} 요일별 자율학습 일정</div>`;
+      html += `<div class="matrix-wrap"><table class="matrix-table" style="width:100%;text-align:center"><thead><tr>
+        <th class="sticky-col">학번</th><th class="sticky-col">이름</th>
+        <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th>
+      </tr></thead><tbody>`;
+      data.forEach((s, idx) => {
+        html += `<tr>
+          <td class="sticky-col">${s.학번}</td><td class="sticky-col name">${escapeHtml(s.이름)}</td>
+          <td><input type="checkbox" data-idx="${idx}" data-day="월" ${s.월 ? 'checked' : ''}></td>
+          <td><input type="checkbox" data-idx="${idx}" data-day="화" ${s.화 ? 'checked' : ''}></td>
+          <td><input type="checkbox" data-idx="${idx}" data-day="수" ${s.수 ? 'checked' : ''}></td>
+          <td><input type="checkbox" data-idx="${idx}" data-day="목" ${s.목 ? 'checked' : ''}></td>
+          <td><input type="checkbox" data-idx="${idx}" data-day="금" ${s.금 ? 'checked' : ''}></td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+      cont.innerHTML = html;
+
+      cont.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const idx = e.target.dataset.idx;
+          const day = e.target.dataset.day;
+          currentScheduleData[idx][day] = e.target.checked;
+        });
+      });
+    }
+
+    function saveScheduleData() {
+      const btn = document.getElementById('saveScheduleBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+      apiPost('/api/teacher/schedule', {
+        grade: ACTIVE_GRADE,
+        cls: CLS,
+        scheduleData: currentScheduleData
+      })
+      .then(res => {
+        if (btn) { btn.disabled = false; btn.textContent = '일정 저장'; }
+        if (res.ok) {
+          showToast('일정이 저장되었습니다.');
+          cachedDashboard = null; // force reload dashboard
+        } else {
+          showToast('저장 실패', 'error');
+        }
+      })
+      .catch(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '일정 저장'; }
+        showToast('저장 실패', 'error');
+      });
+    }
 
     function loadDashboard(yearMonth) {
       apiGet(`/api/teacher/dashboard?grade=${ACTIVE_GRADE}&cls=${CLS}${yearMonth ? '&ym='+yearMonth : ''}`)
@@ -332,19 +415,48 @@ export default function TeacherPage() {
     function renderToday(today) {
       const panel = document.getElementById('tab-today'); if (!panel) return;
       const label = `${gradeName(ACTIVE_GRADE)} ${clsName(CLS)}`;
+      
+      const p1PresentCount = today.period1.expected.filter(s => s.상태 === '출석').length + today.period1.unexpected.length;
+      const p2PresentCount = today.period2.expected.filter(s => s.상태 === '출석').length + today.period2.unexpected.length;
+
       panel.innerHTML =
-        `<div class="summary-row">${label} · ${escapeHtml(today.date)} · 1교시 출석 <b>${today.period1.length}</b>명 · 2교시 출석 <b>${today.period2.length}</b>명</div>` +
+        `<div class="summary-row">${label} · ${escapeHtml(today.date)} · 1교시 출석 <b>${p1PresentCount}</b>명 · 2교시 출석 <b>${p2PresentCount}</b>명</div>` +
         renderPeriodCard('1교시', today.period1) +
         renderPeriodCard('2교시', today.period2);
     }
 
     function renderPeriodCard(title, list) {
-      const inner = list.length === 0
-        ? '<ul class="absent-list"><li class="empty">출석자 없음</li></ul>'
-        : '<ul class="absent-list">' + list.map(s =>
-            `<li><span><b>${s.학번}</b> ${escapeHtml(s.이름)}</span>${s.메모 ? `<span class="memo">${escapeHtml(s.메모)}</span>` : ''}</li>`
-          ).join('') + '</ul>';
-      return `<div class="period-card"><h3>${title}</h3>${inner}</div>`;
+      const { expected, unexpected } = list;
+      
+      let expectedHtml = '';
+      if (expected.length === 0) {
+        expectedHtml = '<li class="empty">예정된 참석자가 없습니다</li>';
+      } else {
+        expectedHtml = expected.map(s => {
+          const isPresent = s.상태 === '출석';
+          return `<li class="${isPresent ? '' : 'is-absent'}">
+            <span><b>${s.학번}</b> ${escapeHtml(s.이름)}</span>
+            <span class="status-badge ${isPresent ? 'present' : 'absent'}">${isPresent ? '출석' : '결석'}</span>
+            ${s.메모 ? `<span class="memo">${escapeHtml(s.메모)}</span>` : ''}
+          </li>`;
+        }).join('');
+      }
+
+      let unexpectedHtml = '';
+      if (unexpected && unexpected.length > 0) {
+        unexpectedHtml = '<div class="unexpected-header">추가 참여자</div>' + unexpected.map(s => {
+          return `<li>
+            <span><b>${s.학번}</b> ${escapeHtml(s.이름)}</span>
+            <span class="status-badge unexpected">추가</span>
+            ${s.메모 ? `<span class="memo">${escapeHtml(s.메모)}</span>` : ''}
+          </li>`;
+        }).join('');
+      }
+
+      return `<div class="period-card"><h3>${title}</h3>
+        <ul class="absent-list scheduled-list">${expectedHtml}</ul>
+        ${unexpectedHtml ? `<ul class="absent-list unexpected-list" style="margin-top:8px">${unexpectedHtml}</ul>` : ''}
+      </div>`;
     }
 
     function renderMonth(monthly) {
@@ -436,9 +548,13 @@ export default function TeacherPage() {
         .then(res => {
           if (!res || !res.ok) { cont.innerHTML = '<div class="loading">로드 실패</div>'; return; }
           const label = `${gradeName(ACTIVE_GRADE)} ${clsName(CLS)}`;
+          
+          const p1 = { expected: res.period1.map(s => ({...s, 상태: '출석'})), unexpected: [] };
+          const p2 = { expected: res.period2.map(s => ({...s, 상태: '출석'})), unexpected: [] };
+
           cont.innerHTML =
             `<div class="summary-row">${label} · ${escapeHtml(date)} · 1교시 출석 <b>${res.period1.length}</b>명 · 2교시 출석 <b>${res.period2.length}</b>명</div>` +
-            renderPeriodCard('1교시', res.period1) + renderPeriodCard('2교시', res.period2);
+            renderPeriodCard('1교시', p1) + renderPeriodCard('2교시', p2);
         })
         .catch(() => { cont.innerHTML = '<div class="loading">로드 실패</div>'; });
     }
