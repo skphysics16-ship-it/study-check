@@ -63,8 +63,8 @@ https://docs.google.com/spreadsheets/d/[여기가_SPREADSHEET_ID]/edit
 GOOGLE_SERVICE_ACCOUNT_EMAIL=your-sa@project.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
 GOOGLE_SPREADSHEET_ID=1ABC...xyz
-JWT_SECRET=최소32자이상의랜덤문자열
-ADMIN_PIN=1234
+JWT_SECRET=!d8cj&dkeovn123^j8d9wkdncmv.ld12
+ADMIN_PIN=1010
 GRADE1_PIN=1111
 GRADE2_PIN=2222
 GRADE3_PIN=3333
