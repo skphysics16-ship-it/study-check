@@ -56,7 +56,15 @@ export default function TeacherPage() {
       return fetch(path, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(r => r.json());
     }
     function apiPost(path, body) {
-      return fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+      const token = getToken();
+      return fetch(path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify(body)
+      }).then(r => r.json());
     }
 
     /* ────────────────────────────────────────────────
@@ -549,11 +557,14 @@ export default function TeacherPage() {
           if (!res || !res.ok) { cont.innerHTML = '<div class="loading">로드 실패</div>'; return; }
           const label = `${gradeName(ACTIVE_GRADE)} ${clsName(CLS)}`;
           
-          const p1 = { expected: res.period1.map(s => ({...s, 상태: '출석'})), unexpected: [] };
-          const p2 = { expected: res.period2.map(s => ({...s, 상태: '출석'})), unexpected: [] };
+          const p1 = res.period1_full || { expected: res.period1.map(s => ({...s, 상태: '출석'})), unexpected: [] };
+          const p2 = res.period2_full || { expected: res.period2.map(s => ({...s, 상태: '출석'})), unexpected: [] };
+
+          const p1PresentCount = p1.expected.filter(s => s.상태 === '출석').length + p1.unexpected.length;
+          const p2PresentCount = p2.expected.filter(s => s.상태 === '출석').length + p2.unexpected.length;
 
           cont.innerHTML =
-            `<div class="summary-row">${label} · ${escapeHtml(date)} · 1교시 출석 <b>${res.period1.length}</b>명 · 2교시 출석 <b>${res.period2.length}</b>명</div>` +
+            `<div class="summary-row">${label} · ${escapeHtml(date)} · 1교시 출석 <b>${p1PresentCount}</b>명 · 2교시 출석 <b>${p2PresentCount}</b>명</div>` +
             renderPeriodCard('1교시', p1) + renderPeriodCard('2교시', p2);
         })
         .catch(() => { cont.innerHTML = '<div class="loading">로드 실패</div>'; });
