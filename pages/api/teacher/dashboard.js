@@ -1,6 +1,6 @@
 const { requireTeacher, canAccessGrade } = require('../../../lib/auth');
 const { readAttendance, readSchedule } = require('../../../lib/sheets');
-const { classOf, gradeOf, todayKST, getMonthWeekdays } = require('../../../lib/utils');
+const { classOf, todayKST, getMonthWeekdays } = require('../../../lib/utils');
 const studentsData = require('../../../students.json');
 
 function getStudents(grade, cls) {
@@ -68,6 +68,30 @@ export default requireTeacher(async function handler(req, res) {
   const todayP1 = buildDailyList(1);
   const todayP2 = buildDailyList(2);
 
+  let todayClassBreakdown = null;
+  if (c === 0) {
+    const todayRecs = clsRecords.filter(r => r.날짜 === today && r.상태 === '출석');
+    const pm = {};
+    todayRecs.forEach(r => {
+      const cls = classOf(r.학번);
+      if (!pm[cls]) pm[cls] = { p1: new Set(), p2: new Set() };
+      if (Number(r.교시) === 1) pm[cls].p1.add(r.학번);
+      else if (Number(r.교시) === 2) pm[cls].p2.add(r.학번);
+    });
+    todayClassBreakdown = {};
+    Object.entries(studentsData[String(g)] || {}).sort((a, b) => Number(a[0]) - Number(b[0])).forEach(([clsStr, clsStudents]) => {
+      const cls = Number(clsStr);
+      const sets = pm[cls] || { p1: new Set(), p2: new Set() };
+      todayClassBreakdown[cls] = {
+        total: clsStudents.length,
+        present1: sets.p1.size,
+        present2: sets.p2.size,
+        participantList1: clsStudents.filter(s => sets.p1.has(s.학번)).map(s => ({ 학번: s.학번, 이름: s.이름 })),
+        participantList2: clsStudents.filter(s => sets.p2.has(s.학번)).map(s => ({ 학번: s.학번, 이름: s.이름 })),
+      };
+    });
+  }
+
   const weekdays = getMonthWeekdays(yearMonth);
   const eligibleDays = weekdays.filter(d => d <= today);
 
@@ -97,7 +121,7 @@ export default requireTeacher(async function handler(req, res) {
   res.json({
     ok: true,
     grade: g, cls: c,
-    today: { date: today, period1: todayP1, period2: todayP2, total: students.length },
+    today: { date: today, period1: todayP1, period2: todayP2, total: students.length, classBreakdown: todayClassBreakdown },
     monthly: { yearMonth, perStudent, perDay },
   });
 });

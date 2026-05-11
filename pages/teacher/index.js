@@ -420,10 +420,55 @@ export default function TeacherPage() {
         .catch(() => showToast('대시보드 로드 실패', 'error'));
     }
 
+    function renderClassBreakdown(date, breakdown, idPrefix) {
+      function makeChips(list) {
+        if (!list || !list.length) return '<span style="color:var(--color-muted)">출석자 없음</span>';
+        return list.map(s => `<span class="participant-chip">${escapeHtml(s.이름)}<small>${s.학번}</small></span>`).join('');
+      }
+      let sumTotal = 0, sumP1 = 0, sumP2 = 0;
+      const rows = Object.entries(breakdown).sort((a, b) => Number(a[0]) - Number(b[0]));
+      rows.forEach(([, c]) => { sumTotal += c.total; sumP1 += c.present1; sumP2 += c.present2; });
+      let html = `<div class="summary-row">${gradeName(ACTIVE_GRADE)} 전체 · ${escapeHtml(date)} · 1교시 출석 <b>${sumP1}</b>명 · 2교시 출석 <b>${sumP2}</b>명</div>`;
+      html += '<table><thead><tr><th>반</th><th>전체</th><th>1교시</th><th>2교시</th></tr></thead><tbody>';
+      rows.forEach(([cls, c]) => {
+        const did = idPrefix + '-' + cls;
+        html += `<tr class="cls-summary-row" data-detail="${did}">
+          <td><b>${cls}반</b></td><td>${c.total}</td>
+          <td class="participants-cell">${c.present1} <span class="toggle-arrow">▾</span></td>
+          <td>${c.present2}</td></tr>`;
+        html += `<tr id="${did}" class="cls-detail-row" style="display:none"><td colspan="4">
+          <div style="margin-bottom:8px"><b style="font-size:13px;color:var(--color-primary)">1교시 출석</b>
+          <div class="participant-chips" style="margin-top:4px">${makeChips(c.participantList1)}</div></div>
+          <div><b style="font-size:13px;color:var(--color-primary)">2교시 출석</b>
+          <div class="participant-chips" style="margin-top:4px">${makeChips(c.participantList2)}</div></div>
+          </td></tr>`;
+      });
+      html += `<tr class="total-row"><td>합계</td><td>${sumTotal}</td><td>${sumP1}</td><td>${sumP2}</td></tr>`;
+      html += '</tbody></table><p class="all-table-hint">반 행을 클릭하면 출석자 명단을 확인합니다.</p>';
+      return html;
+    }
+
+    function attachBreakdownHandlers(container) {
+      container.querySelectorAll('.cls-summary-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const detail = document.getElementById(row.dataset.detail); if (!detail) return;
+          const open = detail.style.display !== 'none';
+          detail.style.display = open ? 'none' : '';
+          row.querySelector('.toggle-arrow').textContent = open ? '▾' : '▴';
+        });
+      });
+    }
+
     function renderToday(today) {
       const panel = document.getElementById('tab-today'); if (!panel) return;
       const label = `${gradeName(ACTIVE_GRADE)} ${clsName(CLS)}`;
-      
+
+      if (CLS === 0 && ACTIVE_GRADE !== 0 && today.classBreakdown) {
+        panel.innerHTML = renderClassBreakdown(today.date, today.classBreakdown, 'today');
+        attachBreakdownHandlers(panel);
+        return;
+      }
+
       const p1PresentCount = today.period1.expected.filter(s => s.상태 === '출석').length + today.period1.unexpected.length;
       const p2PresentCount = today.period2.expected.filter(s => s.상태 === '출석').length + today.period2.unexpected.length;
 
@@ -555,8 +600,14 @@ export default function TeacherPage() {
       apiGet(`/api/teacher/daily-detail?grade=${ACTIVE_GRADE}&cls=${CLS}&date=${date}`)
         .then(res => {
           if (!res || !res.ok) { cont.innerHTML = '<div class="loading">로드 실패</div>'; return; }
+
+          if (CLS === 0 && ACTIVE_GRADE !== 0 && res.classBreakdown) {
+            cont.innerHTML = renderClassBreakdown(date, res.classBreakdown, 'daily');
+            attachBreakdownHandlers(cont);
+            return;
+          }
+
           const label = `${gradeName(ACTIVE_GRADE)} ${clsName(CLS)}`;
-          
           const p1 = res.period1_full || { expected: res.period1.map(s => ({...s, 상태: '출석'})), unexpected: [] };
           const p2 = res.period2_full || { expected: res.period2.map(s => ({...s, 상태: '출석'})), unexpected: [] };
 
