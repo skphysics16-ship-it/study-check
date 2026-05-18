@@ -238,3 +238,39 @@ select, .btn { padding: 10px 14px; border: 1px solid var(--color-border); border
 .unexpected-list li { background: #fffbeb; }
 .scheduled-list li.is-absent { opacity: 0.6; }
 
+/* === 메모 기능 === */
+.memo-tip { font-size: 11px; color: var(--color-muted); margin: 0 0 8px; }
+.absent-list li.memo-editable { cursor: context-menu; user-select: none; }
+.absent-list li.memo-editable .memo-hint { display: none; }
+.absent-list li.memo-editable:hover .memo-hint { display: inline; color: var(--color-muted); font-size: 11px; opacity: 0.5; }
+.absent-list li.has-memo { background: #fffbeb; border-left: 3px solid #fbbf24; }
+.absent-list li.has-memo .memo-text { color: #92400e; font-size: 12px; font-weight: 600; display: block; margin-top: 2px; }
+.absent-list li.is-absent.has-memo { opacity: 0.85; }
+
+.memo-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.memo-modal-box {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 20px 20px 16px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.memo-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.memo-modal-hint { font-size: 13px; color: var(--color-muted); margin-bottom: 12px; }
+.memo-modal-box input {
+  width: 100%; padding: 12px; font-size: 15px;
+  border: 1px solid var(--color-border); border-radius: 8px;
+  margin-bottom: 12px; font-family: inherit; outline: none;
+  transition: border-color 0.15s;
+}
+.memo-modal-box input:focus { border-color: var(--color-primary); }
+.memo-modal-actions { display: flex; gap: 8px; }
+.memo-modal-actions button { flex: 1; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+.memo-clear-btn { color: var(--color-absent); background: #fef2f2; }
+

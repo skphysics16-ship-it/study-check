@@ -90,6 +90,7 @@ export default function TeacherPage() {
     let CLS = 0;          // 0=전체반, 1~9
     let cachedDashboard = null;
     let sortState = { key: '결석', asc: false };
+    let currentMemoTarget = null;
 
     /* ────────────────────────────────────────────────
      * 로그인 화면
@@ -210,6 +211,18 @@ export default function TeacherPage() {
             <div id="dailyContent"><div class="loading">날짜를 선택하세요</div></div>
           </div>
         </section>
+      </div>
+      <div id="memoModal" class="memo-modal-overlay" style="display:none">
+        <div class="memo-modal-box">
+          <div class="memo-modal-title" id="memoModalTitle"></div>
+          <div class="memo-modal-hint">우발적 불참 사유를 입력하세요</div>
+          <input type="text" id="memoInput" maxlength="60" placeholder="예: 학원 보강으로 인한 불참" />
+          <div class="memo-modal-actions">
+            <button id="memoSaveBtn" class="btn btn-primary">저장</button>
+            <button id="memoCancelBtn" class="btn btn-secondary">취소</button>
+            <button id="memoClearBtn" class="btn memo-clear-btn">메모 삭제</button>
+          </div>
+        </div>
       </div>`;
     }
 
@@ -236,6 +249,7 @@ export default function TeacherPage() {
       setupAllGradesTabs();
       setupAllDateSelect();
       setupAllMonthlySelect();
+      initMemoModal();
 
       document.getElementById('logoutBtn')?.addEventListener('click', () => { clearToken(); showLogin(); });
 
@@ -474,23 +488,33 @@ export default function TeacherPage() {
 
       panel.innerHTML =
         `<div class="summary-row">${label} · ${escapeHtml(today.date)} · 1교시 출석 <b>${p1PresentCount}</b>명 · 2교시 출석 <b>${p2PresentCount}</b>명</div>` +
-        renderPeriodCard('1교시', today.period1) +
-        renderPeriodCard('2교시', today.period2);
+        renderPeriodCard('1교시', today.period1, today.date, ACTIVE_GRADE) +
+        renderPeriodCard('2교시', today.period2, today.date, ACTIVE_GRADE);
+      attachMemoHandlers(panel);
     }
 
-    function renderPeriodCard(title, list) {
+    function renderPeriodCard(title, list, date, grade) {
       const { expected, unexpected } = list;
-      
+      const periodNum = title === '1교시' ? 1 : 2;
+
       let expectedHtml = '';
       if (expected.length === 0) {
         expectedHtml = '<li class="empty">예정된 참석자가 없습니다</li>';
       } else {
         expectedHtml = expected.map(s => {
           const isPresent = s.상태 === '출석';
-          return `<li class="${isPresent ? '' : 'is-absent'}">
+          const hasMemo = !!s.메모;
+          return `<li class="memo-editable${isPresent ? '' : ' is-absent'}${hasMemo ? ' has-memo' : ''}"
+            data-학번="${s.학번}"
+            data-이름="${escapeHtml(s.이름)}"
+            data-상태="${isPresent ? '출석' : '결석'}"
+            data-period="${periodNum}"
+            data-date="${date || ''}"
+            data-grade="${grade || ''}"
+            title="우클릭 또는 길게 눌러 메모 추가">
             <span><b>${s.학번}</b> ${escapeHtml(s.이름)}</span>
             <span class="status-badge ${isPresent ? 'present' : 'absent'}">${isPresent ? '출석' : '결석'}</span>
-            ${s.메모 ? `<span class="memo">${escapeHtml(s.메모)}</span>` : ''}
+            ${hasMemo ? `<span class="memo memo-text">${escapeHtml(s.메모)}</span>` : '<span class="memo memo-hint">메모</span>'}
           </li>`;
         }).join('');
       }
@@ -507,6 +531,7 @@ export default function TeacherPage() {
       }
 
       return `<div class="period-card"><h3>${title}</h3>
+        <p class="memo-tip">예정 학생을 우클릭 또는 길게 눌러 메모를 추가할 수 있습니다.</p>
         <ul class="absent-list scheduled-list">${expectedHtml}</ul>
         ${unexpectedHtml ? `<ul class="absent-list unexpected-list" style="margin-top:8px">${unexpectedHtml}</ul>` : ''}
       </div>`;
@@ -616,9 +641,110 @@ export default function TeacherPage() {
 
           cont.innerHTML =
             `<div class="summary-row">${label} · ${escapeHtml(date)} · 1교시 출석 <b>${p1PresentCount}</b>명 · 2교시 출석 <b>${p2PresentCount}</b>명</div>` +
-            renderPeriodCard('1교시', p1) + renderPeriodCard('2교시', p2);
+            renderPeriodCard('1교시', p1, date, ACTIVE_GRADE) +
+            renderPeriodCard('2교시', p2, date, ACTIVE_GRADE);
+          attachMemoHandlers(cont);
         })
         .catch(() => { cont.innerHTML = '<div class="loading">로드 실패</div>'; });
+    }
+
+    /* ────────────────────────────────────────────────
+     * 메모 기능
+     * ──────────────────────────────────────────────── */
+    function openMemoModal(data) {
+      currentMemoTarget = data;
+      document.getElementById('memoModalTitle').textContent = `${data.학번} ${data.이름} · ${data.period}교시`;
+      document.getElementById('memoInput').value = data.memo || '';
+      document.getElementById('memoModal').style.display = 'flex';
+      setTimeout(() => document.getElementById('memoInput')?.focus(), 80);
+    }
+
+    function closeMemoModal() {
+      document.getElementById('memoModal').style.display = 'none';
+      currentMemoTarget = null;
+    }
+
+    function saveMemo(memoText) {
+      if (!currentMemoTarget) return;
+      const data = currentMemoTarget;
+      closeMemoModal();
+      apiPost('/api/teacher/memo', {
+        grade: data.grade,
+        date: data.date,
+        period: data.period,
+        학번: Number(data.학번),
+        이름: data.이름,
+        상태: data.상태,
+        memo: memoText,
+      }).then(res => {
+        if (res.ok) {
+          showToast(memoText ? '메모가 저장되었습니다.' : '메모가 삭제되었습니다.');
+          reloadCurrentView(data.date);
+        } else {
+          showToast('저장 실패', 'error');
+        }
+      }).catch(() => showToast('저장 실패', 'error'));
+    }
+
+    function reloadCurrentView(date) {
+      const activeTab = document.querySelector('#subTabBtns .tab-btn.active')?.dataset.tab;
+      if (!activeTab || activeTab === 'today') {
+        cachedDashboard = null;
+        loadDashboard();
+      } else if (activeTab === 'daily') {
+        loadDailyDetail(date);
+      }
+    }
+
+    function attachMemoHandlers(container) {
+      let longPressTimer = null;
+      let longPressTriggered = false;
+
+      container.querySelectorAll('.memo-editable').forEach(li => {
+        const data = {
+          학번: li.dataset.학번,
+          이름: li.dataset.이름,
+          상태: li.dataset.상태,
+          period: li.dataset.period,
+          date: li.dataset.date,
+          grade: li.dataset.grade,
+          memo: li.querySelector('.memo-text')?.textContent || '',
+        };
+
+        li.addEventListener('contextmenu', e => {
+          e.preventDefault();
+          openMemoModal(data);
+        });
+
+        li.addEventListener('touchstart', () => {
+          longPressTriggered = false;
+          longPressTimer = setTimeout(() => {
+            longPressTriggered = true;
+            openMemoModal(data);
+          }, 600);
+        }, { passive: true });
+
+        li.addEventListener('touchend', () => clearTimeout(longPressTimer));
+        li.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+        li.addEventListener('click', e => {
+          if (longPressTriggered) { e.preventDefault(); e.stopPropagation(); longPressTriggered = false; }
+        });
+      });
+    }
+
+    function initMemoModal() {
+      document.getElementById('memoSaveBtn')?.addEventListener('click', () => {
+        saveMemo(document.getElementById('memoInput')?.value?.trim() || '');
+      });
+      document.getElementById('memoCancelBtn')?.addEventListener('click', closeMemoModal);
+      document.getElementById('memoClearBtn')?.addEventListener('click', () => saveMemo(''));
+      document.getElementById('memoModal')?.addEventListener('click', e => {
+        if (e.target.id === 'memoModal') closeMemoModal();
+      });
+      document.getElementById('memoInput')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveMemo(e.target.value.trim());
+        if (e.key === 'Escape') closeMemoModal();
+      });
     }
 
     /* ── 월별 매트릭스 ── */
