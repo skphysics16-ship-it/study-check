@@ -12,7 +12,7 @@ export default function TeacherPage() {
     const CLS_KEY       = 'teacher_active_cls';   // 0=전체반, 1~9
 
     // NEW 뱃지: id를 바꾸면 다시 표시됨 (계정별로 독립 관리)
-    const NEW_BADGE_ID = 'new-schedule-v1';
+    const NEW_BADGE_EXPIRE = '2026-06-01';
 
     function pad(n) { return String(n).padStart(2, '0'); }
     function todayYM() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1); }
@@ -146,12 +146,7 @@ export default function TeacherPage() {
     /* ────────────────────────────────────────────────
      * 대시보드 HTML 구조 생성
      * ──────────────────────────────────────────────── */
-    function newBadgeKey() {
-      const who = ROLE === 'admin' ? 'admin' : 'grade' + TEACHER_GRADE;
-      return 'new_seen_' + NEW_BADGE_ID + '_' + who;
-    }
-    function isNewBadgeVisible() { return !localStorage.getItem(newBadgeKey()); }
-    function dismissNewBadge() { localStorage.setItem(newBadgeKey(), '1'); }
+    function isNewBadgeVisible() { return new Date() < new Date(NEW_BADGE_EXPIRE); }
 
     function buildDashboardHTML() {
       return `
@@ -351,10 +346,6 @@ export default function TeacherPage() {
           }
           if (b.dataset.tab === 'schedule') {
             loadSchedule();
-            if (isNewBadgeVisible()) {
-              dismissNewBadge();
-              b.querySelector('.new-badge')?.remove();
-            }
           }
         });
       });
