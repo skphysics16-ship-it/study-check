@@ -154,18 +154,16 @@ export default function TeacherPage() {
         ${ROLE === 'admin' ? '<div class="grade-tabs" id="gradeTabs"></div>' : ''}
         <div class="class-tabs teacher-class-tabs" id="teacherClassTabs"></div>
 
-        <div class="tabs" id="subTabs">
+        <div class="tabs" id="subTabs" style="position:relative;">
           <div id="subTabBtns" style="flex:1;display:flex;gap:4px;">
             <button class="tab-btn active" data-tab="today">오늘</button>
             <button class="tab-btn" data-tab="daily">일별 보기</button>
             <button class="tab-btn" data-tab="month">이번 달</button>
             <button class="tab-btn" data-tab="matrix">월별 보기</button>
-            <div style="position:relative;">
-              <button class="tab-btn" data-tab="schedule">일정 관리</button>
-              ${isNewBadgeVisible() ? `<div class="new-feature-card"><strong>✨ 새 기능</strong><p>예정 학생 이름을 우클릭(PC) 또는<br>길게 누르면(모바일)<br>불참 사유를 입력할 수 있어요.</p></div>` : ''}
-            </div>
+            <button class="tab-btn" data-tab="schedule">일정 관리</button>
           </div>
           <button class="tab-btn" id="logoutBtn" style="flex:0 0 auto;background:transparent;color:var(--color-muted)">로그아웃</button>
+          ${isNewBadgeVisible() ? `<div class="new-feature-card"><strong>✨ 새 기능</strong><p>예정 학생 이름을 우클릭(PC) 또는<br>길게 누르면(모바일)<br>불참 사유를 입력할 수 있어요.</p></div>` : ''}
         </div>
 
         <div id="allGradesPanel" style="display:none;">

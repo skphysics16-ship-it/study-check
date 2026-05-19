@@ -116,8 +116,8 @@ a { text-decoration: none; color: inherit; }
 .new-feature-card {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
-  width: 200px;
+  right: 56px;
+  width: 190px;
   background: #fff;
   border: 1.5px solid var(--color-primary);
   border-radius: 10px;
@@ -133,7 +133,7 @@ a { text-decoration: none; color: inherit; }
   content: '';
   position: absolute;
   top: -7px;
-  right: 16px;
+  right: 24px;
   width: 12px;
   height: 12px;
   background: #fff;
