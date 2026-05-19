@@ -11,6 +11,10 @@ export default function TeacherPage() {
     const GRADE_KEY     = 'teacher_active_grade'; // 0=전체학년, 1~3
     const CLS_KEY       = 'teacher_active_cls';   // 0=전체반, 1~9
 
+    // 새 기능 배너: id를 바꾸면 다시 표시됨
+    const BANNER_ID  = 'banner-v1';
+    const BANNER_MSG = '✨ 새 기능: 예정 학생에 메모 추가 — 이름을 우클릭(PC) 또는 길게 누르면(모바일) 불참 사유를 입력할 수 있습니다.';
+
     function pad(n) { return String(n).padStart(2, '0'); }
     function todayYM() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1); }
 
@@ -144,8 +148,10 @@ export default function TeacherPage() {
      * 대시보드 HTML 구조 생성
      * ──────────────────────────────────────────────── */
     function buildDashboardHTML() {
+      const bannerHidden = localStorage.getItem('banner_dismissed_' + BANNER_ID);
       return `
       <div class="teacher-wrap">
+        ${!bannerHidden ? `<div class="banner" id="noticeBanner"><span class="banner-text">${BANNER_MSG}</span><button class="banner-dismiss" id="bannerDismiss">다시 보지 않기</button></div>` : ''}
         ${ROLE === 'admin' ? '<div class="grade-tabs" id="gradeTabs"></div>' : ''}
         <div class="class-tabs teacher-class-tabs" id="teacherClassTabs"></div>
 
@@ -252,6 +258,11 @@ export default function TeacherPage() {
       initMemoModal();
 
       document.getElementById('logoutBtn')?.addEventListener('click', () => { clearToken(); showLogin(); });
+
+      document.getElementById('bannerDismiss')?.addEventListener('click', () => {
+        localStorage.setItem('banner_dismissed_' + BANNER_ID, '1');
+        document.getElementById('noticeBanner')?.remove();
+      });
 
       reloadAll();
     }

@@ -112,7 +112,9 @@ a { text-decoration: none; color: inherit; }
 .period-btn.active { background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-sm); }
 .refresh-btn { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--color-muted); }
 .refresh-btn:active { background: var(--color-bg); }
-.banner { background: var(--color-warning); color: #78350f; padding: 10px 16px; font-size: 14px; text-align: center; }
+.banner { background: var(--color-warning); color: #78350f; padding: 10px 16px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.banner-text { flex: 1; }
+.banner-dismiss { background: none; border: 1.5px solid #92400e; color: #78350f; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 
 .grid { display: grid; gap: 10px; padding: 12px; grid-template-columns: repeat(2, 1fr); }
 @media (min-width: 600px) { .grid { grid-template-columns: repeat(3, 1fr); } }
