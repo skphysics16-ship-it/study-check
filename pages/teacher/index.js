@@ -215,7 +215,7 @@ export default function TeacherPage() {
       <div id="memoModal" class="memo-modal-overlay" style="display:none">
         <div class="memo-modal-box">
           <div class="memo-modal-title" id="memoModalTitle"></div>
-          <div class="memo-modal-hint">우발적 불참 사유를 입력하세요</div>
+          <div class="memo-modal-hint">불참 사유를 입력하세요</div>
           <input type="text" id="memoInput" maxlength="60" placeholder="예: 학원 보강으로 인한 불참" />
           <div class="memo-modal-actions">
             <button id="memoSaveBtn" class="btn btn-primary">저장</button>
