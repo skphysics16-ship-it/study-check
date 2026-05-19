@@ -163,7 +163,7 @@ export default function TeacherPage() {
             <button class="tab-btn" data-tab="schedule">일정 관리</button>
           </div>
           <button class="tab-btn" id="logoutBtn" style="flex:0 0 auto;background:transparent;color:var(--color-muted)">로그아웃</button>
-          ${isNewBadgeVisible() ? `<div class="new-feature-card"><strong>✨ 새 기능</strong><p>예정 학생 이름을 우클릭(PC) 또는<br>길게 누르면(모바일)<br>불참 사유를 입력할 수 있어요.</p></div>` : ''}
+          ${isNewBadgeVisible() ? `<div class="new-feature-card"><strong>✨ 새 기능</strong><p>예정 학생 이름 우클릭(PC) / 길게 누르기(모바일)로 불참 사유 입력 가능</p></div>` : ''}
         </div>
 
         <div id="allGradesPanel" style="display:none;">
