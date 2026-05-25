@@ -114,15 +114,12 @@ a { text-decoration: none; color: inherit; }
 .refresh-btn:active { background: var(--color-bg); }
 .banner { background: var(--color-warning); color: #78350f; padding: 10px 16px; font-size: 14px; text-align: center; }
 .new-feature-card {
-  flex: 1;
-  align-self: center;
-  font-size: 11px;
+  display: block;
+  font-size: 12px;
   color: var(--color-primary);
   background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  padding: 4px 10px;
-  margin: 0 6px;
+  border-bottom: 1px solid #bfdbfe;
+  padding: 7px 12px;
   line-height: 1.5;
   text-align: center;
   pointer-events: none;
