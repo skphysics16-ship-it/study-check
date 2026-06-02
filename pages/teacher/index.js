@@ -300,7 +300,12 @@ export default function TeacherPage() {
           localStorage.setItem(CLS_KEY, String(CLS));
           wrap.querySelectorAll('.class-tab[data-cls]').forEach(x => x.classList.toggle('active', Number(x.dataset.cls) === CLS));
           cachedDashboard = null;
-          loadDashboard();
+          const activeTab = document.querySelector('#subTabBtns .tab-btn.active')?.dataset.tab;
+          if (activeTab === 'schedule') {
+            loadSchedule();
+          } else {
+            loadDashboard();
+          }
         });
       });
     }
@@ -380,6 +385,7 @@ export default function TeacherPage() {
     function renderSchedule(data) {
       const cont = document.getElementById('scheduleContent'); if (!cont) return;
       let html = `<div class="summary-row">${gradeName(ACTIVE_GRADE)} ${clsName(CLS)} 요일별 자율학습 일정</div>`;
+      html += `<div style="margin:8px 0;padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:8px;font-size:13px;color:#713f12">체크박스 변경 후 하단의 <b>일정 저장</b> 버튼을 눌러야 반영됩니다.</div>`;
       html += `<div class="matrix-wrap"><table class="matrix-table" style="width:100%;text-align:center"><thead><tr>
         <th class="sticky-col">학번</th><th class="sticky-col">이름</th>
         <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th>
