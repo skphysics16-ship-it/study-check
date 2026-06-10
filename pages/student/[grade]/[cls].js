@@ -19,6 +19,7 @@ export default function StudentPage({ grade, cls, initialStudents }) {
       longPressTimer: null,
       longPressFired: false,
       activeMemoId: null,
+      inflightSet: new Set(),
     };
 
     function pad(n) { return String(n).padStart(2, '0'); }
@@ -122,7 +123,24 @@ export default function StudentPage({ grade, cls, initialStudents }) {
       card.addEventListener('contextmenu', e => { e.preventDefault(); openMemoSheet(s); });
     }
 
+    async function saveWithRetry(payload, maxRetries = 2) {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 600 * attempt));
+          const r = await fetch('/api/attendance/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const res = await r.json();
+          if (res && res.ok) return true;
+        } catch { /* retry */ }
+      }
+      return false;
+    }
+
     function toggleStatus(s, card) {
+      if (state.inflightSet.has(s.학번)) return;
       const old = state.statusMap[s.학번] || '결석';
       const next = old === '출석' ? '결석' : '출석';
       state.statusMap[s.학번] = next;
@@ -131,14 +149,12 @@ export default function StudentPage({ grade, cls, initialStudents }) {
       card.querySelector('.card-status').textContent = next;
       updateSummary();
 
-      fetch('/api/attendance/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grade, date: state.date, period: state.period, 학번: s.학번, 이름: s.이름, 상태: next, 메모: state.memoMap[s.학번] || '' }),
-      })
-        .then(r => r.json())
-        .then(res => { if (res && res.ok) { showToast(s.이름 + ' → ' + next); } else { revert(); } })
-        .catch(revert);
+      state.inflightSet.add(s.학번);
+      saveWithRetry({ grade, date: state.date, period: state.period, 학번: s.학번, 이름: s.이름, 상태: next, 메모: state.memoMap[s.학번] || '' })
+        .then(ok => {
+          state.inflightSet.delete(s.학번);
+          if (ok) { showToast(s.이름 + ' → ' + next); } else { revert(); }
+        });
 
       function revert() {
         state.statusMap[s.학번] = old;
